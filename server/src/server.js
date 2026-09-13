@@ -14,16 +14,17 @@ const app = express();
 const server = http.createServer(app);
 const PORT = Number(process.env.PORT) || 5000;
 
-const allowedOrigins = process.env.FRONTEND_ORIGIN
-    ? process.env.FRONTEND_ORIGIN.split(',').map(origin => origin.trim())
-    : [
-        'http://localhost:3000',
-        'http://127.0.0.1:3000'
-      ];
+const allowedOrigins = new Set([
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    ...(process.env.FRONTEND_ORIGIN
+        ? process.env.FRONTEND_ORIGIN.split(',').map(origin => origin.trim())
+        : [])
+]);
 
 app.use(cors({
     origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (!origin || allowedOrigins.has(origin)) {
             callback(null, true);
             return;
         }
