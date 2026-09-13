@@ -14,9 +14,24 @@ const app = express();
 const server = http.createServer(app);
 const PORT = Number(process.env.PORT) || 5000;
 
-const allowedOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:3000';
+const allowedOrigins = process.env.FRONTEND_ORIGIN
+    ? process.env.FRONTEND_ORIGIN.split(',').map(origin => origin.trim())
+    : [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000'
+      ];
 
-app.use(cors({ origin: allowedOrigin }));
+app.use(cors({
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+            return;
+        }
+
+        callback(new Error(`CORS: origin ${origin} is not allowed`));
+    }
+}));
+
 app.use(express.json({ limit: '100kb' }));
 
 app.get('/api/health', (req, res) => {
