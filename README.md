@@ -6,12 +6,13 @@ Node.js + Express + SQLite (`better-sqlite3`) + WebSocket (`ws`).
 
 ```bash
 npm install
-cp .env.example .env
 npm start
 ```
 
 Backend: `http://localhost:5000`  
 WebSocket: `ws://localhost:5000/ws`
+
+Локальный `.env` для обычного запуска не обязателен. Значения по умолчанию уже заданы в коде. Если потребуется изменить порт, путь к БД или разрешённый адрес frontend, можно создать `.env` по шаблону `.env.example`.
 
 ## API
 
