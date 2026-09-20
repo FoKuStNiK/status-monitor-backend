@@ -10,8 +10,17 @@ function initStatusSocket(server) {
         socket.isAlive = true;
         console.log('🔌 WebSocket клиент подключён');
 
-        socket.on('pong', () => {
-            socket.isAlive = true;
+        socket.on('message', rawMessage => {
+            try {
+                const message = JSON.parse(rawMessage.toString());
+
+                if (message.type === 'PONG') {
+                    socket.isAlive = true;
+                    console.log('🏓 Клиент ответил PONG');
+                }
+            } catch (error) {
+                console.error('Некорректное WebSocket сообщение от клиента:', error.message);
+            }
         });
 
         socket.on('close', () => {
@@ -27,13 +36,20 @@ function initStatusSocket(server) {
         if (!wssInstance) return;
 
         for (const socket of wssInstance.clients) {
+            if (socket.readyState !== WebSocket.OPEN) continue;
+
             if (socket.isAlive === false) {
+                console.log('❌ WebSocket клиент не отвечает');
                 socket.terminate();
                 continue;
             }
 
             socket.isAlive = false;
-            socket.ping();
+            console.log('🏓 Отправляем PING клиенту');
+
+            socket.send(JSON.stringify({
+                type: 'PING'
+            }));
         }
     }, 30000);
 
