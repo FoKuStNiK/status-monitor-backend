@@ -41,3 +41,9 @@ npm run test:webhook
 ```
 
 Скрипт отправит 12 тестовых webhook-запросов.
+
+git clone https://github.com/FoKuStNiK/status-monitor-backend.git
+cd status-monitor-backend
+npm install
+cp .env.example .env
+npm start
