@@ -19,36 +19,67 @@ function getStatuses({ id, status } = {}) {
         : '';
 
     return db.prepare(`
-        SELECT id, status, timestamp
+        SELECT id, status, timestamp, details
         FROM statuses
         ${where}
         ORDER BY id ASC
     `).all(...params);
 }
 
-function upsertStatus({ id, status, timestamp }) {
-    const existing = db.prepare(
-        'SELECT id, status, timestamp FROM statuses WHERE id = ?'
-    ).get(id);
+function upsertStatus({ id, status, timestamp, details }) {
+    const existing = db.prepare(`
+        SELECT id, status, timestamp, details
+        FROM statuses
+        WHERE id = ?
+    `).get(id);
 
     // Не даём более старому событию затереть уже сохранённое новое состояние.
     if (existing && existing.timestamp > timestamp) {
-        return { record: existing, updated: false, reason: 'older-event' };
+        return {
+            record: existing,
+            updated: false,
+            reason: 'older-event'
+        };
     }
 
+    const hasNewDetails =
+        typeof details === 'string' &&
+        details.trim() !== '';
+
+    const nextDetails = hasNewDetails
+        ? details
+        : existing?.details ?? null;
+
     db.prepare(`
-        INSERT INTO statuses (id, status, timestamp)
-        VALUES (?, ?, ?)
+        INSERT INTO statuses (
+            id,
+            status,
+            timestamp,
+            details
+        )
+        VALUES (?, ?, ?, ?)
+
         ON CONFLICT(id) DO UPDATE SET
             status = excluded.status,
-            timestamp = excluded.timestamp
-    `).run(id, status, timestamp);
+            timestamp = excluded.timestamp,
+            details = excluded.details
+    `).run(
+        id,
+        status,
+        timestamp,
+        nextDetails
+    );
 
-    const record = db.prepare(
-        'SELECT id, status, timestamp FROM statuses WHERE id = ?'
-    ).get(id);
+    const record = db.prepare(`
+        SELECT id, status, timestamp, details
+        FROM statuses
+        WHERE id = ?
+    `).get(id);
 
-    return { record, updated: true };
+    return {
+        record,
+        updated: true
+    };
 }
 
 module.exports = {
