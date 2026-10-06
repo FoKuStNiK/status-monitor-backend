@@ -41,7 +41,7 @@ function receiveWebhook(req, res) {
     ) {
         return res.status(400).json({
             success: false,
-            message: 'details должен быть строкой'
+            message: 'Ошбибка, подробности должны приходить в виде строки'
         });
     }
 

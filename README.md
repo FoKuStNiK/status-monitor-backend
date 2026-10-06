@@ -37,6 +37,7 @@ Webhook JSON:
 После запуска backend:
 
 ```bash
+cd ~/Desktop/status-monitor/status-monitor-backend
 npm run test:webhook
 ```
 

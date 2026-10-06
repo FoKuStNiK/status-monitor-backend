@@ -1,68 +1,61 @@
-const statuses = [
-    'started',
-    'not connected',
-    'connected',
-    'worked',
-    'finished',
-    'error'
-];
+const { STATUSES } = require('../server/src/constants/statuses');
 
-const baseUrl = process.env.API_URL || 'http://localhost:5000';
+const url = 'http://localhost:5000/api/webhook';
 
-const TOTAL_REQUESTS = 50;
-const INTERVAL_MS = 200; // 5 запросов в секунду
+const sleep = ms =>
+    new Promise(resolve => setTimeout(resolve, ms));
 
-async function send(id, status) {
-    const response = await fetch(`${baseUrl}/api/webhook`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            id,
-            status,
-            timestamp: new Date().toISOString()
-        })
-    });
+const randomStatus = () =>
+    STATUSES[Math.floor(Math.random() * STATUSES.length)];
 
-    const body = await response.json();
+const randomHex = length =>
+    Array.from(
+        { length },
+        () => Math.floor(Math.random() * 256)
+            .toString(16)
+            .padStart(2, '0')
+    ).join('');
 
-    console.log(
-        `${response.status} | id=${id} | status=${status}`,
-        body.success ? '✅' : body
+function createDetails() {
+    const count = Math.floor(Math.random() * 6) + 10;
+
+    const containers = Array.from(
+        { length: count },
+        (_, i) =>
+            `Container ${i}: ${randomHex(20)}`
     );
+
+    return [
+        `Number of containers: ${count}`,
+        ...containers,
+        `Response body (containers ${count}): ${randomHex(50)}`,
+        `Response CRC: 0x${randomHex(2).toUpperCase()}`
+    ].join(' ');
 }
 
 async function main() {
-    console.log('Начало теста');
-    console.log('50 запросов за 10 секунд');
-    console.log('Скорость: 5 запросов в секунду\n');
+    for (let i = 0; i < 50; i++) {
+        const body = {
+            id: i % 10 + 10,
+            status: randomStatus(),
+            timestamp: new Date().toISOString(),
+            details: createDetails()
+        };
 
-    const startTime = Date.now();
-    const requests = [];
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
 
-    for (let i = 0; i < TOTAL_REQUESTS; i++) {
-        const id = i + 1;
-        const status = statuses[i % statuses.length];
-
-        requests.push(send(id, status));
-
-        await new Promise(resolve =>
-            setTimeout(resolve, INTERVAL_MS)
+        console.log(
+            `${response.status} | id=${body.id} | ${body.status}`
         );
+
+        await sleep(200);
     }
-
-    await Promise.all(requests);
-
-    const elapsedSeconds =
-        (Date.now() - startTime) / 1000;
-
-    console.log('\nТест завершён');
-    console.log(`Отправлено запросов: ${TOTAL_REQUESTS}`);
-    console.log(`Время: ${elapsedSeconds.toFixed(2)} сек.`);
 }
 
-main().catch(error => {
-    console.error('Ошибка теста:', error);
-    process.exit(1);
-});
+main();
