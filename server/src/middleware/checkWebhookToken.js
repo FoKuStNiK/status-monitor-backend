@@ -1,6 +1,10 @@
 function checkWebhookToken(req, res, next) {
     const expectedToken = process.env.WEBHOOK_TOKEN;
-    const token = req.headers['token'];
+    const authHeader = req.headers['authorization'];
+
+    const token = authHeader?.startsWith('Bearer ')
+        ? authHeader.slice(7)
+        : null;
 
     if (!expectedToken) {
         return res.status(500).json({

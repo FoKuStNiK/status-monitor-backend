@@ -1,9 +1,7 @@
-require('dotenv').config();
-
 const { STATUSES } = require('../server/src/constants/statuses');
 
 const url = 'http://localhost:5000/api/webhook';
-const token = process.env.WEBHOOK_TOKEN;
+const token = 'Karim123456789';
 
 const sleep = ms =>
     new Promise(resolve => setTimeout(resolve, ms));
@@ -37,11 +35,6 @@ function createDetails() {
 }
 
 async function main() {
-    if (!token) {
-        console.error('WEBHOOK_TOKEN не указан в .env');
-        process.exit(1);
-    }
-
     for (let i = 0; i < 50; i++) {
         const body = {
             id: i % 10 + 10,
