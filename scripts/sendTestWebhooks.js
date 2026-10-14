@@ -37,7 +37,7 @@ function createDetails() {
 async function main() {
     for (let i = 0; i < 50; i++) {
         const body = {
-            id: i % 10 + 10,
+            id: i % 10 + 1,
             status: randomStatus(),
             timestamp: new Date().toISOString(),
             details: createDetails()
@@ -47,7 +47,7 @@ async function main() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Token': token
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify(body)
         });
