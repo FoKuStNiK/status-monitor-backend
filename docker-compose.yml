@@ -1,12 +1,26 @@
+# Run from the status-monitor-backend directory.
+# The frontend and backend repositories must be sibling directories.
 services:
   backend:
     build:
-      context: ..
-      dockerfile: status-monitor-backend/Dockerfile
+      context: .
     env_file:
       - .env
+    environment:
+      PORT: "5000"
     volumes:
       - ./server/data:/app/server/data
+    expose:
+      - "5000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../status-monitor-frontend
+    environment:
+      BACKEND_URL: http://backend:5000
     ports:
-      - "80:5000"
+      - "80:3000"
+    depends_on:
+      - backend
     restart: unless-stopped
