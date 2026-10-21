@@ -1,22 +1,11 @@
-# Backend can be built and started independently.
-# Create the shared network once: docker network create status-monitor-net
 services:
   backend:
-    build:
-      context: .
-    env_file:
-      - .env
-    environment:
-      PORT: "5000"
+    build: .
+    env_file: .env
     volumes:
       - ./server/data:/app/server/data
-    # Local API access for health checks and the test webhook script.
-    # HTTP traffic from other hosts should go through a secured reverse proxy.
-    ports:
-      - "127.0.0.1:5000:5000"
     networks:
       - status-monitor
-    restart: unless-stopped
 
 networks:
   status-monitor:
