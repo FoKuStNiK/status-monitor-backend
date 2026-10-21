@@ -1,0 +1,13 @@
+# The build context is the parent folder containing both repositories.
+**
+!status-monitor-backend/
+!status-monitor-backend/**
+!status-monitor-frontend/
+!status-monitor-frontend/**
+**/node_modules
+**/.git
+**/.env
+**/build
+**/npm-debug.log
+**/server/data/*.db
+**/server/data/*.db-*
