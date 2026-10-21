@@ -1,150 +1,243 @@
-# Status Monitor Backend
+# Status Monitor — Backend
 
-Backend для системы мониторинга состояний.
+Это **серверная часть** сайта мониторинга состояний. Она получает сообщения (Webhook), сохраняет последние статусы в SQLite и сообщает об изменениях браузеру через WebSocket.
 
-Стек:
+Проект состоит из **двух отдельных репозиториев**:
+- [Backend](https://github.com/FoKuStNiK/status-monitor-backend) — этот репозиторий: Node.js, Express, SQLite, WebSocket.
+- [Frontend](https://github.com/FoKuStNiK/status-monitor-frontend) — React, таблица статусов, фильтры.
 
-- Node.js
-- Express
-- SQLite (`better-sqlite3`)
-- WebSocket (`ws`)
+## Быстрый запуск всего сайта с Docker (рекомендуемый)
 
-## Docker Compose — сайт без Nginx (ветка `docker`)
+Здесь используется **два контейнера, без Nginx**:
+1. `backend` — сервер API и WebSocket на внутреннем порту 5000.
+2. `web` — отдельный Node.js-сервер: отдаёт собранный React и передаёт запросы `/api` и `/ws` на backend.
 
-Репозитории должны лежать рядом:
+**Dockerfile каждого приложения находится в собственном репозитории.** `docker-compose.yml` хранится в backend и запускает их вместе.
+
+### Шаг 1. Установить Docker
+
+Установите Docker Engine с плагином Docker Compose (Linux) или Docker Desktop (Windows/macOS).
+Проверка в терминале:
+
+```bash
+docker --version
+docker compose version
+```
+
+Если команды не найдены, Docker ещё не установлен или не запущен.
+
+### Шаг 2. Скачать оба проекта в соседние папки
+
+```bash
+mkdir status-monitor
+cd status-monitor
+git clone https://github.com/FoKuStNiK/status-monitor-backend.git
+git clone https://github.com/FoKuStNiK/status-monitor-frontend.git
+```
+
+Должна получиться структура:
 
 ```text
 status-monitor/
 ├── status-monitor-backend/
 │   ├── Dockerfile
-│   └── docker-compose.yml
+│   ├── docker-compose.yml
+│   ├── .env.example
+│   └── server/
 └── status-monitor-frontend/
+    ├── Dockerfile
+    ├── docker/
+    │   ├── server.js
+    │   └── package.json
     └── src/
 ```
 
-Dockerfile backend имеет два этапа: сначала собирает React из соседнего репозитория,
-затем устанавливает backend и копирует собранный frontend в итоговый образ Node.js.
-Express сам раздаёт React, обрабатывает API и WebSocket на **одном порту 5000**.
-Nginx и отдельный frontend-контейнер не используются.
+Если репозитории уже скачаны, повторно выполнять `git clone` не надо — обновите их через `git pull origin main` в каждой папке.
 
-### Первый запуск с Docker Compose
-
-Обе папки должны лежать рядом. Перейдите из общей папки `status-monitor`:
+### Шаг 3. Создать настройки backend
 
 ```bash
 cd status-monitor-backend
+```
+
+В **Git Bash / Linux / macOS**:
+
+```bash
 cp .env.example .env
-# Замените WEBHOOK_TOKEN в .env на свой секретный токен.
-docker compose build
-docker compose up -d
-docker compose ps
 ```
 
-`docker compose build` собирает образ, а `docker compose up -d` создаёт
-и запускает контейнер в фоне. Можно заменить две команды одной:
+В **PowerShell** вместо этого:
 
-```bash
-docker compose up -d --build
+```powershell
+Copy-Item .env.example .env
 ```
 
-### Сборка через Dockerfile без Compose
+Откройте созданный `.env` в текстовом редакторе. Образец:
 
-Находясь в **общей папке** `status-monitor`, в которой лежат оба репозитория:
-
-```bash
-docker build -f status-monitor-backend/Dockerfile -t status-monitor:latest .
-```
-
-`-f` задаёт путь к Dockerfile, `-t` — имя и тег образа,
-а последняя точка — **контекст сборки**. Он должен включать обе папки,
-поскольку Dockerfile собирает React из `status-monitor-frontend`.
-Эта команда только собирает образ и не запускает контейнер.
-Для обычного запуска рекомендуется Compose.
-
-### Обновление проекта из GitHub
-
-Обновите ветку `docker` в **обоих** репозиториях, а затем пересоберите образ:
-
-```bash
-cd status-monitor-frontend
-git fetch origin
-git switch docker
-git pull
-cd ../status-monitor-backend
-git fetch origin
-git switch docker
-git pull
-docker compose up -d --build
-```
-
-Первые строки предполагают, что вы находитесь в общей папке
-`status-monitor`, а локальные ветки `docker` уже созданы.
-Если локальной ветки ещё нет, вместо `git switch docker`
-выполните `git switch --track origin/docker`.
-
-Открывайте сайт по адресу `http://localhost` (или `http://IP-сервера`).
-На хосте опубликован порт 80, который направляется на порт 5000 контейнера.
-Для проверки API: `http://localhost/api/health`.
-
-База SQLite хранится на хосте в `server/data` через bind mount.
-Для публичной эксплуатации дополнительно настройте HTTPS, защищённый SSH,
-брандмауэр и резервное копирование SQLite.
-
-Запуск без Docker по-прежнему возможен: backend запускается отдельно,
-а frontend — через `npm start` в соседнем репозитории.
-
-## Запуск backend без Docker
-
-```bash
-git clone https://github.com/FoKuStNiK/status-monitor-backend.git
-cd status-monitor-backend
-npm install
-cp .env.example .env
-npm start
-```
-
-Backend: `http://localhost:5000`; WebSocket: `ws://localhost:5000/ws`.
-
-## Переменные окружения
-
-Пример `.env`:
-
-```env
+```dotenv
 PORT=5000
 DB_PATH=./server/data/statuses.db
 FRONTEND_ORIGIN=http://localhost:3000
 WEBHOOK_TOKEN=your-secret-token
 ```
 
-`WEBHOOK_TOKEN` используется для авторизации webhook-запросов.
-Webhook должен передавать токен в заголовке:
+**Замените `your-secret-token` длинным случайным секретом.** Это пароль для программ, присылающих события. Не публикуйте файл `.env` в GitHub.
 
-```text
-Authorization: Bearer your-secret-token
+Для Docker оставьте `DB_PATH=./server/data/statuses.db`: в Compose настроено сохранение именно этой папки на компьютере. Порт backend внутри Docker фиксирован на 5000 независимо от настройки `PORT` в `.env`.
+
+### Шаг 4. Собрать и запустить
+
+Находясь в папке `status-monitor-backend`:
+
+```bash
+docker compose up -d --build
 ```
 
-## Формат webhook
+Что означают части команды:
+- `docker compose` — работает с несколькими контейнерами по `docker-compose.yml`.
+- `up` — создаёт и запускает сервисы.
+- `-d` — оставляет их работающими в фоне.
+- `--build` — пересобирает образы из Dockerfile.
+
+Проверка:
+
+```bash
+docker compose ps
+```
+
+Откройте:
+- **http://localhost** — сайт, если Docker запущен на вашем компьютере.
+- **http://localhost/api/health** — проверка backend, ожидаемый ответ: `{"ok":true}`.
+- На удалённом сервере вместо `localhost` используется IP или домен этого сервера, если доступ разрешён.
+
+Браузер обращается только к порту **80**. Отдельно открывать порт 5000 не нужно: Node.js-сервер frontend сам перенаправляет `/api` и `/ws` на внутренний сервис `backend:5000`.
+
+### Шаг 5. Отправить тестовые события
+
+В папке backend, не останавливая контейнеры:
+
+```bash
+docker compose exec backend npm run test:webhook
+```
+
+Эта команда выполняет тестовый скрипт **внутри backend-контейнера**, где `localhost:5000` доступен. Он отправит 50 тестовых сообщений для ID 1–10. В браузере появятся строки со статусами.
+
+Если просто выполнить `npm run test:webhook` на компьютере при Docker-запуске, скрипт может не работать: он обращается к `localhost:5000`, а внешний порт 5000 в Compose намеренно не публикуется.
+
+### Управление и обновление
+
+```bash
+docker compose logs -f
+docker compose ps
+docker compose down
+```
+
+- `logs -f` — смотреть сообщения контейнеров (выход из просмотра: Ctrl+C; контейнеры продолжат работать).
+- `ps` — список и состояние сервисов.
+- `down` — остановить и удалить контейнеры и сеть, **не удаляя папку `server/data`**.
+
+Для обновления кода получите изменения **в обоих репозиториях**:
+
+```bash
+# Из папки status-monitor-backend
+git pull origin main
+cd ../status-monitor-frontend
+git pull origin main
+cd ../status-monitor-backend
+docker compose up -d --build
+```
+
+Изменения в React требуют пересборки образа web; изменения backend — пересборки образа backend.
+
+## Запуск без Docker — для разработки
+
+Нужен [Node.js](https://nodejs.org/) версии **20+** и npm.
+
+**Терминал 1 — backend:**
+
+```bash
+cd status-monitor-backend
+npm install
+# Создайте .env из .env.example по инструкции выше, если ещё не сделали.
+npm start
+```
+
+Проверка: http://localhost:5000/api/health.
+
+**Терминал 2 — frontend:**
+
+```bash
+cd status-monitor-frontend
+npm install
+# Создайте frontend/.env из .env.example, если его нет.
+npm start
+```
+
+Откройте http://localhost:3000. Для локальной разработки frontend должен использовать настройки `REACT_APP_API_URL=http://localhost:5000` и `REACT_APP_WS_URL=ws://localhost:5000/ws`.
+
+Остановить любой процесс `npm start` можно нажатием **Ctrl+C** в соответствующем терминале.
+
+## Как устроен обмен событиями
+
+Внешняя программа отправляет HTTP POST на `/api/webhook` с заголовком:
+
+```text
+Authorization: Bearer ВАШ_СЕКРЕТНЫЙ_ТОКЕН
+Content-Type: application/json
+```
+
+Пример тела запроса:
 
 ```json
 {
   "id": 15,
   "status": "worked",
-  "timestamp": "2026-10-14T06:30:00.000Z",
-  "details": "Number of containers: 3 Container 0: 001122334455 Container 1: AABBCCDDEEFF Container 2: 1234567890AB Response body (containers 3): A1B2C3D4E5F6 Response CRC: 0xD6A4"
+  "timestamp": "2026-10-21T09:30:00.000Z",
+  "details": "Тестовое событие"
 }
 ```
 
-Допустимые статусы: `started`, `not connected`, `connected`,
-`worked`, `finished`, `error`.
+Разрешённые статусы: `started`, `not connected`, `connected`, `worked`, `finished`, `error`.
 
-Если `details` отсутствует или приходит пустой строкой, ранее сохранённое значение сохраняется.
+- `id` — положительное целое число.
+- `status` — строго одно из перечисленных значений.
+- `timestamp` — строка даты (лучше ISO 8601 с часовым поясом).
+- `details` — необязательный текст; пустое значение не стирает прежние подробности.
 
-## Тестовые webhook-запросы
+Для каждого ID хранится **только последнее состояние**. Более старое по времени сообщение не перезапишет более новое.
 
-После запуска backend:
+| Адрес | Назначение |
+| --- | --- |
+| `GET /api/health` | Проверить, что сервер отвечает |
+| `GET /api/statuses` | Список текущих состояний |
+| `GET /api/statuses?id=15` | Фильтр по ID |
+| `GET /api/statuses?status=worked` | Фильтр по статусу |
+| `POST /api/webhook` | Запись события с секретным токеном |
+| `/ws` | WebSocket-подключение для новых состояний |
 
-```bash
-npm run test:webhook
-```
+## Файлы backend и хранение SQLite
 
-Скрипт отправляет 50 тестовых webhook-запросов со случайными статусами и тестовыми данными `details`.
+- `Dockerfile` — собирает **только backend** (Node.js).
+- `docker-compose.yml` — объединяет frontend и backend в одну Docker-сеть.
+- `.dockerignore` — исключает из образа `.env`, локальные зависимости и файлы SQLite.
+- `server/src/server.js` — маршруты API и запуск WebSocket.
+- `server/src/db.js` — подключение базы и SQL-миграции.
+- `server/src/services/statusService.js` — чтение и сохранение статусов.
+- `scripts/sendTestWebhooks.js` — генератор тестовых событий.
+
+База по умолчанию хранится в `server/data/statuses.db`. Compose подключает папку `./server/data` с компьютера в `/app/server/data` внутри backend-контейнера. Поэтому пересоздание контейнера не удаляет базу. **Это не резервная копия**: папку данных нужно регулярно копировать безопасным способом.
+
+## Частые проблемы
+
+| Симптом | Что делать |
+| --- | --- |
+| `docker compose` не найден | Установите Compose или Docker Desktop |
+| Ошибка про отсутствующий `../status-monitor-frontend` | Проверьте, что обе папки лежат рядом |
+| Ошибка при чтении `.env` | Создайте файл в корне backend |
+| Порт 80 занят | Остановите программу, которая его использует, или поменяйте левую часть `"80:3000"` в Compose |
+| Сайт даёт 502 для API | Backend не готов или остановился: `docker compose logs backend` |
+| Таблица пустая | Отправьте тестовые события |
+| Webhook отвечает 401 | Проверьте Bearer-токен в `.env` |
+| База стала пустой | Проверьте `DB_PATH` и путь подключённого тома; смена пути не переносит старую базу |
+
+**Для сервера, доступного через интернет:** приведённый Compose публикует HTTP без шифрования. Перед эксплуатацией нужно настроить HTTPS, firewall и резервное копирование SQLite. Токен Webhook не следует передавать через открытый интернет по HTTP.
