@@ -59,7 +59,7 @@ WEBHOOK_TOKEN=your-secret-token
 
 **Замените `your-secret-token` на свой длинный случайный секрет.** Не загружайте файл `.env` на GitHub.
 
-- `PORT` — порт Node.js. В Docker Compose он принудительно установлен на 5000.
+- `PORT` — порт Node.js. Для Docker оставьте `5000` в `.env`.
 - `DB_PATH` — путь к файлу базы. Для Docker оставьте значение по умолчанию, если не настраивали новый том.
 - `FRONTEND_ORIGIN` — допустимые адреса для прямых запросов браузера к backend.
 - `WEBHOOK_TOKEN` — токен, проверяемый для входящих Webhook.
@@ -85,10 +85,13 @@ docker compose ps
 
 Проверьте на компьютере, где запущен Docker:
 
-- http://localhost:5000/api/health — ответ `{"ok":true}`.
-- http://localhost:5000/api/statuses — список статусов, при первом запуске может быть `[]`.
+Порт 5000 **не публикуется на хосте**. Проверьте API внутри контейнера:
 
-В Compose порт 5000 опубликован только на `127.0.0.1` Docker-хоста. Соседний контейнер frontend в сети `status-monitor-net` обращается к нему как к `http://backend:5000`.
+~~~bash
+docker compose exec backend node -e "require('http').get('http://localhost:5000/api/health', r => r.pipe(process.stdout))"
+~~~
+
+Ожидаемый ответ: `{"ok":true}`. После запуска frontend API также будет доступно по адресу `http://localhost/api/health` через frontend-прокси. Контейнер frontend в сети `status-monitor-net` обращается к backend по адресу `http://backend:5000`.
 
 ## Шаг 6. Отправка тестовых событий
 
@@ -169,7 +172,7 @@ npm start
 | --- | --- |
 | Ошибка `network status-monitor-net not found` | Один раз выполните `docker network create status-monitor-net` |
 | Ошибка про `.env` | Создан ли файл из `.env.example`? |
-| Порт 5000 занят | Не запущен ли другой backend на компьютере? |
+| `localhost:5000` не отвечает на VPS | Это ожидаемо: порт не опубликован на хосте. Используйте проверку через `docker compose exec` или frontend-прокси. |
 | HTTP 401 при Webhook | Совпадает ли Bearer-токен с `WEBHOOK_TOKEN`? |
 | Frontend не получает статусы | Запущен ли backend, оба ли контейнера подключены к общей сети? |
 | База пустая после смены `DB_PATH` | Старые данные автоматически не переносятся |
