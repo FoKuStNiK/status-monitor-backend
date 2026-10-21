@@ -2,12 +2,7 @@ services:
   backend:
     build: .
     env_file: .env
+    ports:
+      - "5000:5000"
     volumes:
       - ./server/data:/app/server/data
-    networks:
-      - status-monitor
-
-networks:
-  status-monitor:
-    external: true
-    name: status-monitor-net
