@@ -27,13 +27,60 @@ Dockerfile backend имеет два этапа: сначала собирает
 Express сам раздаёт React, обрабатывает API и WebSocket на **одном порту 5000**.
 Nginx и отдельный frontend-контейнер не используются.
 
+### Первый запуск с Docker Compose
+
+Обе папки должны лежать рядом. Перейдите из общей папки `status-monitor`:
+
 ```bash
 cd status-monitor-backend
 cp .env.example .env
 # Замените WEBHOOK_TOKEN в .env на свой секретный токен.
-docker compose up -d --build
+docker compose build
+docker compose up -d
 docker compose ps
 ```
+
+`docker compose build` собирает образ, а `docker compose up -d` создаёт
+и запускает контейнер в фоне. Можно заменить две команды одной:
+
+```bash
+docker compose up -d --build
+```
+
+### Сборка через Dockerfile без Compose
+
+Находясь в **общей папке** `status-monitor`, в которой лежат оба репозитория:
+
+```bash
+docker build -f status-monitor-backend/Dockerfile -t status-monitor:latest .
+```
+
+`-f` задаёт путь к Dockerfile, `-t` — имя и тег образа,
+а последняя точка — **контекст сборки**. Он должен включать обе папки,
+поскольку Dockerfile собирает React из `status-monitor-frontend`.
+Эта команда только собирает образ и не запускает контейнер.
+Для обычного запуска рекомендуется Compose.
+
+### Обновление проекта из GitHub
+
+Обновите ветку `docker` в **обоих** репозиториях, а затем пересоберите образ:
+
+```bash
+cd status-monitor-frontend
+git fetch origin
+git switch docker
+git pull
+cd ../status-monitor-backend
+git fetch origin
+git switch docker
+git pull
+docker compose up -d --build
+```
+
+Первые строки предполагают, что вы находитесь в общей папке
+`status-monitor`, а локальные ветки `docker` уже созданы.
+Если локальной ветки ещё нет, вместо `git switch docker`
+выполните `git switch --track origin/docker`.
 
 Открывайте сайт по адресу `http://localhost` (или `http://IP-сервера`).
 На хосте опубликован порт 80, который направляется на порт 5000 контейнера.
