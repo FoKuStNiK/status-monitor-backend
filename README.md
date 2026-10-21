@@ -9,28 +9,54 @@ Backend для системы мониторинга состояний.
 - SQLite (`better-sqlite3`)
 - WebSocket (`ws`)
 
-## Установка и запуск
+## Docker Compose — сайт без Nginx (ветка `docker`)
+
+Репозитории должны лежать рядом:
+
+```text
+status-monitor/
+├── status-monitor-backend/
+│   ├── Dockerfile
+│   └── docker-compose.yml
+└── status-monitor-frontend/
+    └── src/
+```
+
+Dockerfile backend имеет два этапа: сначала собирает React из соседнего репозитория,
+затем устанавливает backend и копирует собранный frontend в итоговый образ Node.js.
+Express сам раздаёт React, обрабатывает API и WebSocket на **одном порту 5000**.
+Nginx и отдельный frontend-контейнер не используются.
+
+```bash
+cd status-monitor-backend
+cp .env.example .env
+# Замените WEBHOOK_TOKEN в .env на свой секретный токен.
+docker compose up -d --build
+docker compose ps
+```
+
+Открывайте сайт по адресу `http://localhost` (или `http://IP-сервера`).
+На хосте опубликован порт 80, который направляется на порт 5000 контейнера.
+Для проверки API: `http://localhost/api/health`.
+
+База SQLite хранится на хосте в `server/data` через bind mount.
+Для публичной эксплуатации дополнительно настройте HTTPS, защищённый SSH,
+брандмауэр и резервное копирование SQLite.
+
+Запуск без Docker по-прежнему возможен: backend запускается отдельно,
+а frontend — через `npm start` в соседнем репозитории.
+
+## Запуск backend без Docker
 
 ```bash
 git clone https://github.com/FoKuStNiK/status-monitor-backend.git
 cd status-monitor-backend
-
 npm install
 cp .env.example .env
 npm start
 ```
 
-Backend:
-
-```text
-http://localhost:5000
-```
-
-WebSocket:
-
-```text
-ws://localhost:5000/ws
-```
+Backend: `http://localhost:5000`; WebSocket: `ws://localhost:5000/ws`.
 
 ## Переменные окружения
 
@@ -44,7 +70,6 @@ WEBHOOK_TOKEN=your-secret-token
 ```
 
 `WEBHOOK_TOKEN` используется для авторизации webhook-запросов.
-
 Webhook должен передавать токен в заголовке:
 
 ```text
@@ -62,18 +87,10 @@ Authorization: Bearer your-secret-token
 }
 ```
 
-Допустимые статусы:
+Допустимые статусы: `started`, `not connected`, `connected`,
+`worked`, `finished`, `error`.
 
-```text
-started
-not connected
-connected
-worked
-finished
-error
-```
-
-`details` является необязательным полем. Если оно отсутствует или приходит пустой строкой, ранее сохранённое значение сохраняется.
+Если `details` отсутствует или приходит пустой строкой, ранее сохранённое значение сохраняется.
 
 ## Тестовые webhook-запросы
 
